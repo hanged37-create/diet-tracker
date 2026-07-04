@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>식단 · 운동 일지</title>
+<style>
+  *{box-sizing:border-box;-webkit-text-size-adjust:100%;}
+  html,body{width:100%;overflow-x:hidden;}
+  :root{
+    --bg:#F6F7F4; --panel:#FFFFFF; --ink:#20262B; --ink-soft:#5B6570; --ink-faint:#8A9089;
+    --line:#DDE2DC; --accent:#4F7A5C; --accent-soft:#E4ECE5; --accent-ink:#2F4C38;
+    --warn:#B4732E; --warn-soft:#F5E6D3; --warn-ink:#7A4E1E;
+    --danger:#B14A4A; --danger-soft:#F5E1E1;
+    --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+    --serif:Georgia,'Noto Serif KR',serif;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+  .app{max-width:880px;margin:0 auto;padding:28px 20px 60px;}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:18px;}
+  .head h1{font-family:var(--serif);font-size:26px;font-weight:700;margin:0;letter-spacing:-0.3px;}
+  .head p{margin:4px 0 0;font-size:13px;color:var(--ink-soft);}
+  .datebox{display:flex;align-items:center;gap:8px;}
+  .datebox input{font-family:var(--mono);font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:4px;background:var(--panel);}
+  .tabs{display:flex;gap:2px;margin-bottom:20px;border-bottom:1px solid var(--line);}
+  .tab{padding:9px 16px;font-size:14px;cursor:pointer;color:var(--ink-soft);border-bottom:2px solid transparent;user-select:none;}
+  .tab.active{color:var(--ink);border-bottom-color:var(--accent);font-weight:600;}
+  .tab:hover{color:var(--ink);}
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 18px;margin-bottom:16px;}
+  .card h2{font-size:14px;margin:0 0 12px;font-weight:600;letter-spacing:0.2px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:11px;color:var(--ink-soft);}
+  .field input,.field select{font-family:var(--sans);font-size:13px;padding:7px 8px;border:1px solid var(--line);border-radius:4px;background:#FCFCFB;min-width:80px;}
+  .field input[type=number]{width:90px;}
+  .btn{font-size:13px;padding:7px 14px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;font-weight:600;}
+  .btn:hover{opacity:0.9;}
+  .btn.ghost{background:transparent;color:var(--accent-ink);border:1px solid var(--line);font-weight:500;}
+  .btn.ghost:hover{border-color:var(--accent);}
+  .btn.small{padding:4px 9px;font-size:12px;}
+  .btn.danger{background:transparent;color:var(--danger);border:1px solid var(--danger-soft);}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-weight:600;color:var(--ink-soft);font-size:11px;text-transform:uppercase;letter-spacing:0.3px;padding:6px 8px;border-bottom:1px solid var(--line);}
+  td{padding:7px 8px;border-bottom:1px solid #EEF0EC;font-family:var(--mono);}
+  td.name{font-family:var(--sans);}
+  tr.total td{font-weight:700;border-top:1.5px solid var(--ink);border-bottom:none;font-family:var(--mono);}
+  .num{text-align:right;}
+  .muted{color:var(--ink-faint);font-size:12px;}
+  .note{font-size:12px;color:var(--ink-soft);background:var(--accent-soft);border-radius:4px;padding:8px 10px;margin-top:10px;}
+  .flag-warn{background:var(--warn-soft);color:var(--warn-ink);padding:2px 7px;border-radius:3px;font-size:11px;font-weight:600;}
+  .flag-ok{background:var(--accent-soft);color:var(--accent-ink);padding:2px 7px;border-radius:3px;font-size:11px;font-weight:600;}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;}
+  .stat{background:#FBFBF9;border:1px solid var(--line);border-radius:5px;padding:10px 12px;}
+  .stat .l{font-size:11px;color:var(--ink-soft);margin-bottom:3px;}
+  .stat .v{font-family:var(--mono);font-size:18px;font-weight:700;}
+  .stat .u{font-size:11px;color:var(--ink-faint);margin-left:2px;}
+  .bal-wrap{margin-top:6px;}
+  .bal-track{position:relative;height:22px;background:#EEF0EC;border-radius:4px;overflow:hidden;margin-top:6px;}
+  .bal-fill{position:absolute;top:0;left:0;height:100%;background:var(--accent);}
+  .bal-fill.over{background:var(--warn);}
+  .bal-marker{position:absolute;top:-3px;width:2px;height:28px;background:var(--ink);}
+  details summary{cursor:pointer;font-size:12px;color:var(--ink-soft);margin-top:8px;}
+  .empty{color:var(--ink-faint);font-size:12px;padding:10px 0;}
+  select{cursor:pointer;}
+  .hint{font-size:11px;color:var(--ink-faint);}
+  .recent-label{font-size:11px;color:var(--ink-soft);margin-bottom:5px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{font-size:12px;padding:5px 10px;border:1px solid var(--line);border-radius:14px;background:#FCFCFB;cursor:pointer;color:var(--ink);}
+  .chip:hover{border-color:var(--accent);background:var(--accent-soft);}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{min-width:0;}
+  @media (max-width:520px){
+    .app{padding:16px 12px 40px;}
+    .head h1{font-size:21px;}
+    .head p{font-size:12px;}
+    .card{padding:12px 12px;}
+    .field{min-width:0;flex:1 1 auto;}
+    .field input,.field select{font-size:13px;padding:7px;min-width:0;}
+    .field input[type=number]{width:100%;min-width:56px;}
+    table{font-size:11.5px;}
+    th,td{padding:6px 5px;}
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .tab{padding:8px 10px;font-size:13px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="head">
+    <div>
+      <h1>식단 · 운동 일지</h1>
+      <p>기초대사량 기준 일일 섭취/소모 기록</p>
+    </div>
+    <div class="datebox">
+      <label class="muted" style="font-size:11px;">기록일</label>
+      <input type="date" id="dateInput">
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab" data-tab="settings">설정</div>
+    <div class="tab" data-tab="exercise">운동일지</div>
+    <div class="tab" data-tab="food">식단일지</div>
+    <div class="tab" data-tab="analysis">일일분석</div>
+  </div>
+
+  <div class="panel" id="panel-settings">
+    <div class="card">
+      <h2>신체 정보 · 목표</h2>
+      <div class="row">
+        <div class="field"><label>성별</label>
+          <select id="s-gender"><option value="m">남성</option><option value="f">여성</option></select>
+        </div>
+        <div class="field"><label>나이(세)</label><input type="number" id="s-age" min="1"></div>
+        <div class="field"><label>키(cm)</label><input type="number" id="s-height" min="1"></div>
+        <div class="field"><label>체중(kg)</label><input type="number" id="s-weight" min="1" step="0.1"></div>
+        <div class="field"><label>활동수준</label>
+          <select id="s-activity">
+            <option value="1.2">좌식(운동 거의 안함)</option>
+            <option value="1.375">가벼운 활동(주1~3회)</option>
+            <option value="1.55">보통 활동(주3~5회)</option>
+            <option value="1.725">활발한 활동(주6~7회)</option>
+            <option value="1.9">매우 활발(매일+육체노동)</option>
+          </select>
+        </div>
+        <div class="field"><label>목표</label>
+          <select id="s-goal">
+            <option value="-500">체중 감량 (-500kcal)</option>
+            <option value="-250">완만한 감량 (-250kcal)</option>
+            <option value="0">체중 유지</option>
+            <option value="300">체중 증량 (+300kcal)</option>
+          </select>
+        </div>
+        <div class="field"><button class="btn" id="s-save">저장</button></div>
+      </div>
+      <div class="note">Mifflin-St Jeor 공식 기준 일반 추정치입니다. 개인 대사량은 체성분·건강상태에 따라 차이가 있을 수 있어 의료/영양 상담을 대체하지 않습니다.</div>
+      <div class="stat-grid" style="margin-top:14px;">
+        <div class="stat"><div class="l">기초대사량 (BMR)</div><div class="v" id="calc-bmr">-</div></div>
+        <div class="stat"><div class="l">활동대사량 (TDEE)</div><div class="v" id="calc-tdee">-</div></div>
+        <div class="stat"><div class="l">목표 섭취 칼로리</div><div class="v" id="calc-target">-</div></div>
+        <div class="stat"><div class="l">권장 단백질</div><div class="v" id="calc-protein">-</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>백업 · 내보내기 / 가져오기</h2>
+      <div class="hint">이 일지는 이 브라우저(localStorage)에만 저장됩니다. 다른 브라우저/기기에서는 안 보이고, 브라우저 데이터를 지우면 기록도 함께 사라지니 주기적으로 내보내기 해서 파일로 보관하시는 걸 권장합니다.</div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field"><button class="btn ghost" id="backup-export">전체 백업 내보내기(.json)</button></div>
+        <div class="field"><label>백업 파일 가져오기</label><input type="file" id="backup-import" accept="application/json"></div>
+      </div>
+      <div class="hint" style="margin-top:6px;">가져오기는 현재 기기에 저장된 데이터를 백업 파일 내용으로 덮어씁니다. 설정, 참고표, 최근 사용 항목, 날짜별 기록 전체가 포함됩니다.</div>
+      <div id="backup-status" class="hint" style="margin-top:6px;"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-exercise">
+    <div class="card">
+      <h2>운동 기록 추가</h2>
+      <div class="row">
+        <div class="field"><label>참고표에서 선택</label>
+          <select id="ex-ref"><option value="">-- 직접입력 --</option></select>
+        </div>
+        <div class="field"><label>운동명(직접입력시)</label><input type="text" id="ex-name" placeholder="예: 클라이밍"></div>
+        <div class="field"><label>시간(분)</label><input type="number" id="ex-min" min="0"></div>
+        <div class="field"><label>소모 칼로리(kcal)</label><input type="number" id="ex-kcal" min="0" placeholder="자동계산"></div>
+        <div class="field"><button class="btn" id="ex-add">추가</button></div>
+      </div>
+      <div class="hint">참고표를 선택하면 체중 기반으로 칼로리가 자동 계산됩니다. 직접 값을 입력하면 그 값이 우선 적용됩니다.</div>
+      <div id="ex-recent" style="margin-top:10px;"></div>
+      <details><summary>운동 참고표(MET) 관리</summary>
+        <div id="ex-ref-list" style="margin-top:10px;"></div>
+        <div class="row" style="margin-top:10px;">
+          <div class="field"><label>운동명</label><input type="text" id="ref-ex-name"></div>
+          <div class="field"><label>MET</label><input type="number" id="ref-ex-met" step="0.1" min="0"></div>
+          <div class="field"><button class="btn ghost small" id="ref-ex-add">항목 추가</button></div>
+        </div>
+        <div class="hint">MET 값은 Compendium of Physical Activities 기준 일반 추정치이며, 실제 운동 강도에 따라 다를 수 있어 자유롭게 수정 가능합니다.</div>
+      </details>
+    </div>
+    <div class="card">
+      <h2>오늘의 운동 기록</h2>
+      <div class="table-scroll"><table>
+        <thead><tr><th>운동</th><th class="num">시간(분)</th><th class="num">칼로리(kcal)</th><th></th></tr></thead>
+        <tbody id="ex-log-body"></tbody>
+        <tfoot><tr class="total"><td>합계</td><td></td><td class="num" id="ex-log-total">0</td><td></td></tr></tfoot>
+      </table></div>
+      <div class="empty" id="ex-log-empty" style="display:none;">기록이 없습니다.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-food">
+    <div class="card">
+      <h2>식단 기록 추가</h2>
+      <div class="row">
+        <div class="field"><label>참고표에서 선택</label>
+          <select id="fd-ref"><option value="">-- 직접입력 --</option></select>
+        </div>
+        <div class="field"><label>음식명(직접입력시)</label><input type="text" id="fd-name" placeholder="예: 닭가슴살 도시락"></div>
+        <div class="field"><label>배수(1인분 기준)</label><input type="number" id="fd-mult" step="0.1" min="0" value="1"></div>
+        <div class="field"><label>칼로리(kcal)</label><input type="number" id="fd-kcal" min="0"></div>
+        <div class="field"><label>탄수화물(g)</label><input type="number" id="fd-carb" min="0"></div>
+        <div class="field"><label>단백질(g)</label><input type="number" id="fd-protein" min="0"></div>
+        <div class="field"><label>지방(g)</label><input type="number" id="fd-fat" min="0"></div>
+        <div class="field"><button class="btn" id="fd-add">추가</button></div>
+      </div>
+      <div class="hint">참고표 선택 시 배수만큼 자동 계산됩니다(예: 1.5배분 섭취시 배수 1.5). 직접입력은 칼로리/탄단지 값을 그대로 사용합니다.</div>
+      <div id="fd-recent" style="margin-top:10px;"></div>
+      <details><summary>음식 참고표 관리</summary>
+        <div id="fd-ref-list" style="margin-top:10px;"></div>
+        <div class="row" style="margin-top:10px;">
+          <div class="field"><label>음식명</label><input type="text" id="ref-fd-name"></div>
+          <div class="field"><label>기준량</label><input type="text" id="ref-fd-unit" placeholder="예: 100g, 1공기"></div>
+          <div class="field"><label>칼로리</label><input type="number" id="ref-fd-kcal" min="0"></div>
+          <div class="field"><label>탄수화물(g)</label><input type="number" id="ref-fd-carb" min="0"></div>
+          <div class="field"><label>단백질(g)</label><input type="number" id="ref-fd-protein" min="0"></div>
+          <div class="field"><label>지방(g)</label><input type="number" id="ref-fd-fat" min="0"></div>
+          <div class="field"><button class="btn ghost small" id="ref-fd-add">항목 추가</button></div>
+        </div>
+        <div class="hint">기본 제공 항목은 일반 추정치입니다. 정확도를 위해 식약처 식품영양성분DB나 제품 라벨 값으로 직접 등록/수정하는 것을 권장합니다.</div>
+        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px;">
+          <label style="font-size:12px;font-weight:600;">JSON 일괄 가져오기</label>
+          <div class="hint" style="margin:3px 0 6px;">형식: [{"name":"식품명","unit":"100g","kcal":0,"carb":0,"protein":0,"fat":0}, ...]</div>
+          <textarea id="fd-import-text" rows="4" style="width:100%;font-family:var(--mono);font-size:12px;padding:8px;border:1px solid var(--line);border-radius:4px;"></textarea>
+          <div style="margin-top:6px;"><button class="btn ghost small" id="fd-import-btn">가져오기</button> <span id="fd-import-msg" class="hint"></span></div>
+        </div>
+      </details>
+    </div>
+    <div class="card">
+      <h2>오늘의 식단 기록</h2>
+      <div class="table-scroll"><table>
+        <thead><tr><th>음식</th><th class="num">kcal</th><th class="num">탄(g)</th><th class="num">단(g)</th><th class="num">지(g)</th><th></th></tr></thead>
+        <tbody id="fd-log-body"></tbody>
+        <tfoot><tr class="total"><td>합계</td><td class="num" id="fd-total-kcal">0</td><td class="num" id="fd-total-carb">0</td><td class="num" id="fd-total-protein">0</td><td class="num" id="fd-total-fat">0</td><td></td></tr></tfoot>
+      </table></div>
+      <div class="empty" id="fd-log-empty" style="display:none;">기록이 없습니다.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-analysis">
+    <div class="card">
+      <h2>오늘의 대사 잔고</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="l">목표 섭취 칼로리</div><div class="v" id="an-target">-</div></div>
+        <div class="stat"><div class="l">실제 섭취 칼로리</div><div class="v" id="an-intake">-</div></div>
+        <div class="stat"><div class="l">운동 소모 칼로리</div><div class="v" id="an-burn">-</div></div>
+        <div class="stat"><div class="l">목표 대비 차이</div><div class="v" id="an-diff">-</div></div>
+      </div>
+      <div class="bal-wrap">
+        <div class="hint">섭취 칼로리 / 목표 섭취 칼로리 비율</div>
+        <div class="bal-track"><div class="bal-fill" id="an-bar"></div></div>
+      </div>
+      <div id="an-flag-cal" style="margin-top:10px;"></div>
+    </div>
+    <div class="card">
+      <h2>영양소 분석</h2>
+      <div class="table-scroll"><table>
+        <thead><tr><th>영양소</th><th class="num">섭취량</th><th class="num">권장량(참고)</th><th>상태</th></tr></thead>
+        <tbody id="an-nutrient-body"></tbody>
+      </table></div>
+      <div class="note">권장량은 일반적인 다이어트 가이드라인(단백질 체중당 1.6g, 지방 최소 체중당 0.6g)을 근거로 한 참고치이며, 개인별 건강상태·질환 여부에 따라 달라질 수 있습니다. 정확한 진단이 필요한 경우 의료/영양 전문가와 상담을 권장합니다.</div>
+    </div>
+    <div class="card">
+      <h2>최근 7일 추이</h2>
+      <div class="table-scroll"><table>
+        <thead><tr><th>날짜</th><th class="num">섭취(kcal)</th><th class="num">소모(kcal)</th><th class="num">단백질(g)</th></tr></thead>
+        <tbody id="an-history-body"></tbody>
+      </table></div>
+      <div class="empty" id="an-history-empty" style="display:none;">기록된 날짜가 없습니다.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let settings = {gender:'f',age:'',height:'',weight:'',activity:'1.375',goal:'0'};
+let exRef = [];
+let fdRef = [];
+let datesIndex = [];
+let recentEx = [];
+let recentFd = [];
+let currentDate = new Date().toISOString().slice(0,10);
+let currentLog = {exercises:[], meals:[]};
+
+const defaultExRef = [
+  {name:'걷기(보통)', met:3.5},
+  {name:'걷기(빠르게)', met:5.0},
+  {name:'달리기(8km/h)', met:8.3},
+  {name:'달리기(10km/h)', met:9.8},
+  {name:'실내자전거(보통)', met:6.8},
+  {name:'웨이트트레이닝(일반)', met:5.0},
+  {name:'웨이트트레이닝(고강도)', met:6.0},
+  {name:'요가', met:2.5},
+  {name:'필라테스', met:3.0},
+  {name:'수영(자유형,보통)', met:8.3},
+  {name:'등산', met:6.0},
+  {name:'계단오르기', met:8.8},
+  {name:'줄넘기', met:11.0}
+];
+const defaultFdRef = [
+  {name:'백미밥', unit:'1공기(210g)', kcal:300, carb:65, protein:6, fat:1},
+  {name:'달걀', unit:'1개(50g)', kcal:70, carb:0.5, protein:6, fat:5},
+  {name:'닭가슴살(조리)', unit:'100g', kcal:110, carb:0, protein:23, fat:2}
+];
+
+function $(id){return document.getElementById(id);}
+
+async function storageGetSafe(key, shared){
+  try{
+    const v = localStorage.getItem('diet-tracker:'+key);
+    return v;
+  }catch(e){ return null; }
+}
+async function storageSet(key, value, shared){
+  try{ localStorage.setItem('diet-tracker:'+key, JSON.stringify(value)); }catch(e){}
+}
+
+async function init(){
+  $('dateInput').value = currentDate;
+
+  const sRaw = await storageGetSafe('settings', false);
+  if(sRaw){ try{ settings = JSON.parse(sRaw); }catch(e){} }
+
+  const exRaw = await storageGetSafe('exercise-ref', false);
+  exRef = exRaw ? JSON.parse(exRaw) : defaultExRef.slice();
+  if(!exRaw) await storageSet('exercise-ref', exRef, false);
+
+  const exMigRaw = await storageGetSafe('ex-ref-schema-version', false);
+  const exMigVer = exMigRaw ? parseInt(exMigRaw) : 1;
+  if(exMigVer < 2){
+    const v2Items = [
+      {name:'PT/고강도 웨이트(휴식 짧음)', met:6.0},
+      {name:'개인 웨이트(가볍게,짧게)', met:3.5},
+      {name:'계단오르기 머신(천국의 계단/스텝밀)', met:9.0}
+    ];
+    v2Items.forEach(it=>{ if(!exRef.some(r=>r.name===it.name)) exRef.push(it); });
+    await storageSet('exercise-ref', exRef, false);
+    await storageSet('ex-ref-schema-version', 2, false);
+  }
+
+  const fdRaw = await storageGetSafe('food-ref', false);
+  fdRef = fdRaw ? JSON.parse(fdRaw) : defaultFdRef.slice();
+  if(!fdRaw) await storageSet('food-ref', fdRef, false);
+
+  const diRaw = await storageGetSafe('dates-index', false);
+  datesIndex = diRaw ? JSON.parse(diRaw) : [];
+
+  const reRaw = await storageGetSafe('recent-exercises', false);
+  recentEx = reRaw ? JSON.parse(reRaw) : [];
+  const rfRaw = await storageGetSafe('recent-foods', false);
+  recentFd = rfRaw ? JSON.parse(rfRaw) : [];
+
+  applySettingsToForm();
+  renderExRefSelect();
+  renderFdRefSelect();
+  renderExRefList();
+  renderFdRefList();
+  renderExRecent();
+  renderFdRecent();
+  await loadLog(currentDate);
+  updateCalcDisplay();
+  setupTabs();
+  setupEvents();
+  renderHistory();
+}
+
+function applySettingsToForm(){
+  $('s-gender').value = settings.gender || 'f';
+  $('s-age').value = settings.age || '';
+  $('s-height').value = settings.height || '';
+  $('s-weight').value = settings.weight || '';
+  $('s-activity').value = settings.activity || '1.375';
+  $('s-goal').value = settings.goal || '0';
+}
+
+function calcBMR(){
+  const w = parseFloat(settings.weight), h = parseFloat(settings.height), a = parseFloat(settings.age);
+  if(!w || !h || !a) return null;
+  let bmr = 10*w + 6.25*h - 5*a + (settings.gender==='m' ? 5 : -161);
+  return Math.round(bmr);
+}
+function calcTDEE(){
+  const bmr = calcBMR();
+  if(bmr===null) return null;
+  return Math.round(bmr * parseFloat(settings.activity||1.375));
+}
+function calcTarget(){
+  const tdee = calcTDEE();
+  if(tdee===null) return null;
+  return Math.round(tdee + parseFloat(settings.goal||0));
+}
+function calcProteinTarget(){
+  const w = parseFloat(settings.weight);
+  if(!w) return null;
+  return Math.round(w*1.6);
+}
+function calcFatMin(){
+  const w = parseFloat(settings.weight);
+  if(!w) return null;
+  return Math.round(w*0.6);
+}
+
+function updateCalcDisplay(){
+  const bmr = calcBMR(), tdee = calcTDEE(), target = calcTarget(), prot = calcProteinTarget();
+  $('calc-bmr').textContent = bmr!==null ? bmr.toLocaleString()+' kcal' : '입력 필요';
+  $('calc-tdee').textContent = tdee!==null ? tdee.toLocaleString()+' kcal' : '입력 필요';
+  $('calc-target').textContent = target!==null ? target.toLocaleString()+' kcal' : '입력 필요';
+  $('calc-protein').textContent = prot!==null ? prot.toLocaleString()+' g' : '입력 필요';
+}
+
+function setupTabs(){
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      $('panel-'+t.dataset.tab).classList.add('active');
+      if(t.dataset.tab==='analysis'){ renderAnalysis(); renderHistory(); }
+    });
+  });
+  document.querySelector('.tab[data-tab="settings"]').classList.add('active');
+  $('panel-settings').classList.add('active');
+}
+
+function setupEvents(){
+  $('dateInput').addEventListener('change', async (e)=>{
+    currentDate = e.target.value;
+    await loadLog(currentDate);
+  });
+
+  $('s-save').addEventListener('click', async ()=>{
+    settings = {
+      gender: $('s-gender').value,
+      age: $('s-age').value,
+      height: $('s-height').value,
+      weight: $('s-weight').value,
+      activity: $('s-activity').value,
+      goal: $('s-goal').value
+    };
+    await storageSet('settings', settings, false);
+    updateCalcDisplay();
+  });
+
+  $('ex-add').addEventListener('click', addExercise);
+  $('fd-add').addEventListener('click', addFood);
+  $('backup-export').addEventListener('click', exportAllData);
+  $('backup-import').addEventListener('change', importAllData);
+  $('ref-ex-add').addEventListener('click', addExRefItem);
+  $('ref-fd-add').addEventListener('click', addFdRefItem);
+  $('fd-import-btn').addEventListener('click', importFdJson);
+
+  $('ex-ref').addEventListener('change', ()=>{
+    const idx = $('ex-ref').value;
+    if(idx!==''){
+      $('ex-name').value = exRef[idx].name;
+      recalcExKcal();
+    }
+  });
+  $('ex-min').addEventListener('input', recalcExKcal);
+
+  $('fd-ref').addEventListener('change', applyFdRef);
+  $('fd-mult').addEventListener('input', applyFdRef);
+}
+
+function recalcExKcal(){
+  const idx = $('ex-ref').value;
+  const min = parseFloat($('ex-min').value);
+  const w = parseFloat(settings.weight);
+  if(idx!=='' && min && w){
+    const met = exRef[idx].met;
+    const kcal = Math.round(met * 3.5 * w / 200 * min);
+    $('ex-kcal').value = kcal;
+  }
+}
+
+function applyFdRef(){
+  const idx = $('fd-ref').value;
+  const mult = parseFloat($('fd-mult').value) || 1;
+  if(idx!==''){
+    const ref = fdRef[idx];
+    $('fd-name').value = ref.name;
+    $('fd-kcal').value = Math.round(ref.kcal*mult*10)/10;
+    $('fd-carb').value = Math.round(ref.carb*mult*10)/10;
+    $('fd-protein').value = Math.round(ref.protein*mult*10)/10;
+    $('fd-fat').value = Math.round(ref.fat*mult*10)/10;
+  }
+}
+
+function renderExRefSelect(){
+  const sel = $('ex-ref');
+  sel.innerHTML = '<option value="">-- 직접입력 --</option>';
+  exRef.forEach((r,i)=>{
+    const o = document.createElement('option');
+    o.value = i; o.textContent = r.name+' (MET '+r.met+')';
+    sel.appendChild(o);
+  });
+}
+function renderFdRefSelect(){
+  const sel = $('fd-ref');
+  sel.innerHTML = '<option value="">-- 직접입력 --</option>';
+  fdRef.forEach((r,i)=>{
+    const o = document.createElement('option');
+    o.value = i; o.textContent = r.name+' ('+r.unit+')';
+    sel.appendChild(o);
+  });
+}
+
+function renderExRefList(){
+  const wrap = $('ex-ref-list');
+  wrap.innerHTML = '';
+  const tbl = document.createElement('table');
+  tbl.innerHTML = '<thead><tr><th>운동명</th><th class="num">MET</th><th></th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  exRef.forEach((r,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="name">'+escapeHtml(r.name)+'</td><td class="num">'+r.met+'</td><td><button class="btn danger small" data-i="'+i+'">삭제</button></td>';
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+  wrap.appendChild(tbl);
+  wrap.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      exRef.splice(parseInt(b.dataset.i),1);
+      await storageSet('exercise-ref', exRef, false);
+      renderExRefList(); renderExRefSelect();
+    });
+  });
+}
+function renderFdRefList(){
+  const wrap = $('fd-ref-list');
+  wrap.innerHTML = '';
+  const tbl = document.createElement('table');
+  tbl.innerHTML = '<thead><tr><th>음식명</th><th>기준량</th><th class="num">kcal</th><th class="num">탄</th><th class="num">단</th><th class="num">지</th><th></th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  fdRef.forEach((r,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="name">'+escapeHtml(r.name)+'</td><td>'+escapeHtml(r.unit)+'</td><td class="num">'+r.kcal+'</td><td class="num">'+r.carb+'</td><td class="num">'+r.protein+'</td><td class="num">'+r.fat+'</td><td><button class="btn danger small" data-i="'+i+'">삭제</button></td>';
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+  wrap.appendChild(tbl);
+  wrap.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      fdRef.splice(parseInt(b.dataset.i),1);
+      await storageSet('food-ref', fdRef, false);
+      renderFdRefList(); renderFdRefSelect();
+    });
+  });
+}
+
+async function addExRefItem(){
+  const name = $('ref-ex-name').value.trim();
+  const met = parseFloat($('ref-ex-met').value);
+  if(!name || !met) return;
+  exRef.push({name, met});
+  await storageSet('exercise-ref', exRef, false);
+  $('ref-ex-name').value=''; $('ref-ex-met').value='';
+  renderExRefList(); renderExRefSelect();
+}
+async function exportAllData(){
+  const status = $('backup-status');
+  status.textContent = '백업 파일 만드는 중...';
+  status.style.color = 'var(--ink-soft)';
+  try{
+    const logs = {};
+    for(const d of datesIndex){
+      const raw = await storageGetSafe('log:'+d, false);
+      if(raw) logs[d] = JSON.parse(raw);
+    }
+    const backup = {
+      backupVersion: 1,
+      exportedAt: new Date().toISOString(),
+      settings,
+      exerciseRef: exRef,
+      foodRef: fdRef,
+      recentExercises: recentEx,
+      recentFoods: recentFd,
+      datesIndex,
+      logs
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'diet-tracker-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    status.textContent = '백업 파일이 다운로드되었습니다.';
+    status.style.color = 'var(--accent-ink)';
+  }catch(err){
+    status.textContent = '백업 실패: '+err.message;
+    status.style.color = 'var(--danger)';
+  }
+}
+
+async function importAllData(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const status = $('backup-status');
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!data || typeof data !== 'object') throw new Error('올바른 백업 파일이 아닙니다');
+
+    const ok = window.confirm('현재 기기에 저장된 모든 기록을 이 백업 파일 내용으로 덮어씁니다. 계속하시겠습니까?');
+    if(!ok){ status.textContent = '가져오기 취소됨'; e.target.value=''; return; }
+
+    status.textContent = '가져오는 중...';
+    status.style.color = 'var(--ink-soft)';
+
+    settings = data.settings || settings;
+    exRef = Array.isArray(data.exerciseRef) ? data.exerciseRef : exRef;
+    fdRef = Array.isArray(data.foodRef) ? data.foodRef : fdRef;
+    recentEx = Array.isArray(data.recentExercises) ? data.recentExercises : [];
+    recentFd = Array.isArray(data.recentFoods) ? data.recentFoods : [];
+    datesIndex = Array.isArray(data.datesIndex) ? data.datesIndex : [];
+
+    await storageSet('settings', settings, false);
+    await storageSet('exercise-ref', exRef, false);
+    await storageSet('food-ref', fdRef, false);
+    await storageSet('recent-exercises', recentEx, false);
+    await storageSet('recent-foods', recentFd, false);
+    await storageSet('dates-index', datesIndex, false);
+
+    const logs = data.logs || {};
+    for(const d of Object.keys(logs)){
+      await storageSet('log:'+d, logs[d], false);
+    }
+
+    applySettingsToForm();
+    updateCalcDisplay();
+    renderExRefSelect();
+    renderFdRefSelect();
+    renderExRefList();
+    renderFdRefList();
+    renderExRecent();
+    renderFdRecent();
+    await loadLog(currentDate);
+    renderHistory();
+
+    status.textContent = '가져오기 완료: 날짜 '+datesIndex.length+'건 복원됨';
+    status.style.color = 'var(--accent-ink)';
+  }catch(err){
+    status.textContent = '가져오기 실패: '+err.message;
+    status.style.color = 'var(--danger)';
+  }
+  e.target.value = '';
+}
+
+async function addFdRefItem(){
+  const name = $('ref-fd-name').value.trim();
+  const unit = $('ref-fd-unit').value.trim() || '1회분';
+  const kcal = parseFloat($('ref-fd-kcal').value)||0;
+  const carb = parseFloat($('ref-fd-carb').value)||0;
+  const protein = parseFloat($('ref-fd-protein').value)||0;
+  const fat = parseFloat($('ref-fd-fat').value)||0;
+  if(!name) return;
+  fdRef.push({name, unit, kcal, carb, protein, fat});
+  await storageSet('food-ref', fdRef, false);
+  ['ref-fd-name','ref-fd-unit','ref-fd-kcal','ref-fd-carb','ref-fd-protein','ref-fd-fat'].forEach(id=>$(id).value='');
+  renderFdRefList(); renderFdRefSelect();
+}
+
+async function importFdJson(){
+  const msg = $('fd-import-msg');
+  let arr;
+  try{
+    arr = JSON.parse($('fd-import-text').value);
+    if(!Array.isArray(arr)) throw new Error('배열 형식이 아닙니다');
+  }catch(e){
+    msg.textContent = 'JSON 형식 오류: '+e.message;
+    msg.style.color = 'var(--danger)';
+    return;
+  }
+  let added = 0, skipped = 0;
+  arr.forEach(it=>{
+    if(!it || !it.name){ skipped++; return; }
+    fdRef.push({
+      name: String(it.name),
+      unit: it.unit ? String(it.unit) : '1회분',
+      kcal: Number(it.kcal)||0,
+      carb: Number(it.carb)||0,
+      protein: Number(it.protein)||0,
+      fat: Number(it.fat)||0
+    });
+    added++;
+  });
+  await storageSet('food-ref', fdRef, false);
+  renderFdRefList(); renderFdRefSelect();
+  msg.style.color = 'var(--accent-ink)';
+  msg.textContent = added+'건 추가됨'+(skipped?', '+skipped+'건 건너뜀':'');
+  $('fd-import-text').value = '';
+}
+
+async function loadLog(date){
+  const raw = await storageGetSafe('log:'+date, false);
+  currentLog = raw ? JSON.parse(raw) : {exercises:[], meals:[]};
+  renderExLog();
+  renderFdLog();
+  if(document.querySelector('.tab[data-tab="analysis"]').classList.contains('active')) renderAnalysis();
+}
+
+async function saveLog(){
+  await storageSet('log:'+currentDate, currentLog, false);
+  if(!datesIndex.includes(currentDate)){
+    datesIndex.push(currentDate);
+    datesIndex.sort();
+    await storageSet('dates-index', datesIndex, false);
+  }
+}
+
+function addExercise(){
+  const refIdx = $('ex-ref').value;
+  const name = $('ex-name').value.trim() || (refIdx!=='' ? exRef[refIdx].name : '');
+  const min = parseFloat($('ex-min').value) || 0;
+  let kcal = parseFloat($('ex-kcal').value);
+  if(isNaN(kcal)){
+    if(refIdx!=='' && settings.weight){
+      kcal = Math.round(exRef[refIdx].met * 3.5 * parseFloat(settings.weight) / 200 * min);
+    } else { kcal = 0; }
+  }
+  if(!name) return;
+  currentLog.exercises.push({name, min, kcal});
+  saveLog();
+  renderExLog();
+  pushRecentEx({name, min, kcal});
+  $('ex-name').value=''; $('ex-min').value=''; $('ex-kcal').value=''; $('ex-ref').value='';
+}
+
+async function pushRecentEx(item){
+  recentEx = recentEx.filter(r=>r.name!==item.name);
+  recentEx.unshift(item);
+  recentEx = recentEx.slice(0,12);
+  await storageSet('recent-exercises', recentEx, false);
+  renderExRecent();
+}
+async function pushRecentFd(item){
+  recentFd = recentFd.filter(r=>r.name!==item.name);
+  recentFd.unshift(item);
+  recentFd = recentFd.slice(0,12);
+  await storageSet('recent-foods', recentFd, false);
+  renderFdRecent();
+}
+function renderExRecent(){
+  const wrap = $('ex-recent');
+  if(!recentEx.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = '<div class="recent-label">최근 사용</div><div class="chip-row" id="ex-recent-chips"></div>';
+  const row = $('ex-recent-chips');
+  recentEx.forEach((r,i)=>{
+    const c = document.createElement('span');
+    c.className='chip';
+    c.textContent = r.name+' · '+r.kcal+'kcal';
+    c.addEventListener('click', ()=>{
+      $('ex-ref').value='';
+      $('ex-name').value = r.name;
+      $('ex-min').value = r.min;
+      $('ex-kcal').value = r.kcal;
+    });
+    row.appendChild(c);
+  });
+}
+function renderFdRecent(){
+  const wrap = $('fd-recent');
+  if(!recentFd.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = '<div class="recent-label">최근 사용</div><div class="chip-row" id="fd-recent-chips"></div>';
+  const row = $('fd-recent-chips');
+  recentFd.forEach((r,i)=>{
+    const c = document.createElement('span');
+    c.className='chip';
+    c.textContent = r.name+' · '+r.kcal+'kcal';
+    c.addEventListener('click', ()=>{
+      $('fd-ref').value='';
+      $('fd-name').value = r.name;
+      $('fd-mult').value = 1;
+      $('fd-kcal').value = r.kcal;
+      $('fd-carb').value = r.carb;
+      $('fd-protein').value = r.protein;
+      $('fd-fat').value = r.fat;
+    });
+    row.appendChild(c);
+  });
+}
+
+function addFood(){
+  const refIdx = $('fd-ref').value;
+  const name = $('fd-name').value.trim() || (refIdx!=='' ? fdRef[refIdx].name : '');
+  const kcal = parseFloat($('fd-kcal').value)||0;
+  const carb = parseFloat($('fd-carb').value)||0;
+  const protein = parseFloat($('fd-protein').value)||0;
+  const fat = parseFloat($('fd-fat').value)||0;
+  if(!name) return;
+  currentLog.meals.push({name, kcal, carb, protein, fat});
+  saveLog();
+  renderFdLog();
+  pushRecentFd({name, kcal, carb, protein, fat});
+  ['fd-name','fd-kcal','fd-carb','fd-protein','fd-fat'].forEach(id=>$(id).value='');
+  $('fd-mult').value = 1; $('fd-ref').value='';
+}
+
+function renderExLog(){
+  const body = $('ex-log-body');
+  body.innerHTML = '';
+  let total = 0;
+  currentLog.exercises.forEach((it, i)=>{
+    total += it.kcal;
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="name">'+escapeHtml(it.name)+'</td><td class="num">'+it.min+'</td><td class="num">'+it.kcal+'</td><td><button class="btn danger small" data-i="'+i+'">삭제</button></td>';
+    body.appendChild(tr);
+  });
+  $('ex-log-total').textContent = total.toLocaleString();
+  $('ex-log-empty').style.display = currentLog.exercises.length ? 'none' : 'block';
+  body.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      currentLog.exercises.splice(parseInt(b.dataset.i),1);
+      saveLog(); renderExLog();
+    });
+  });
+}
+function renderFdLog(){
+  const body = $('fd-log-body');
+  body.innerHTML = '';
+  let tk=0, tc=0, tp=0, tf=0;
+  currentLog.meals.forEach((it,i)=>{
+    tk+=it.kcal; tc+=it.carb; tp+=it.protein; tf+=it.fat;
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="name">'+escapeHtml(it.name)+'</td><td class="num">'+it.kcal+'</td><td class="num">'+it.carb+'</td><td class="num">'+it.protein+'</td><td class="num">'+it.fat+'</td><td><button class="btn danger small" data-i="'+i+'">삭제</button></td>';
+    body.appendChild(tr);
+  });
+  $('fd-total-kcal').textContent = Math.round(tk).toLocaleString();
+  $('fd-total-carb').textContent = Math.round(tc*10)/10;
+  $('fd-total-protein').textContent = Math.round(tp*10)/10;
+  $('fd-total-fat').textContent = Math.round(tf*10)/10;
+  $('fd-log-empty').style.display = currentLog.meals.length ? 'none' : 'block';
+  body.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      currentLog.meals.splice(parseInt(b.dataset.i),1);
+      saveLog(); renderFdLog();
+    });
+  });
+}
+
+function sumLog(log){
+  const burn = log.exercises.reduce((s,e)=>s+e.kcal,0);
+  const intake = log.meals.reduce((s,m)=>s+m.kcal,0);
+  const carb = log.meals.reduce((s,m)=>s+m.carb,0);
+  const protein = log.meals.reduce((s,m)=>s+m.protein,0);
+  const fat = log.meals.reduce((s,m)=>s+m.fat,0);
+  return {burn, intake, carb, protein, fat};
+}
+
+function renderAnalysis(){
+  const target = calcTarget();
+  const {burn, intake, carb, protein, fat} = sumLog(currentLog);
+  $('an-target').textContent = target!==null ? target.toLocaleString()+' kcal' : '설정 필요';
+  $('an-intake').textContent = Math.round(intake).toLocaleString()+' kcal';
+  $('an-burn').textContent = Math.round(burn).toLocaleString()+' kcal';
+
+  const bar = $('an-bar');
+  const flagWrap = $('an-flag-cal');
+  if(target!==null && target>0){
+    const ratio = Math.min(intake/target, 1.4);
+    bar.style.width = (ratio*100)+'%';
+    bar.className = 'bal-fill' + (intake>target ? ' over' : '');
+    const diff = Math.round(intake - target);
+    $('an-diff').textContent = (diff>=0?'+':'')+diff.toLocaleString()+' kcal';
+    flagWrap.innerHTML = diff>150
+      ? '<span class="flag-warn">목표보다 '+diff+'kcal 초과 섭취</span>'
+      : (diff<-300 ? '<span class="flag-warn">목표보다 '+Math.abs(diff)+'kcal 부족 섭취</span>' : '<span class="flag-ok">목표 범위 내</span>');
+  }else{
+    bar.style.width='0%';
+    $('an-diff').textContent='설정 필요';
+    flagWrap.innerHTML = '<span class="hint">설정 탭에서 신체정보를 입력하면 분석됩니다.</span>';
+  }
+
+  const protTarget = calcProteinTarget();
+  const fatMin = calcFatMin();
+  const rows = [];
+  rows.push(nutrientRow('단백질', protein, protTarget, 'g'));
+  rows.push(nutrientRow('지방', fat, fatMin, 'g', true));
+  rows.push(nutrientRow('탄수화물', carb, null, 'g'));
+  $('an-nutrient-body').innerHTML = rows.join('');
+}
+
+function nutrientRow(name, actual, targetVal, unit, isMin){
+  actual = Math.round(actual*10)/10;
+  let flag = '<span class="hint">참고용</span>';
+  let targetStr = '-';
+  if(targetVal!==null){
+    targetStr = (isMin?'최소 ':'') + targetVal.toLocaleString() + unit;
+    if(actual < targetVal*0.9){
+      flag = '<span class="flag-warn">부족</span>';
+    } else {
+      flag = '<span class="flag-ok">충족</span>';
+    }
+  }
+  return '<tr><td class="name">'+name+'</td><td class="num">'+actual+unit+'</td><td class="num">'+targetStr+'</td><td>'+flag+'</td></tr>';
+}
+
+async function renderHistory(){
+  const body = $('an-history-body');
+  const recent = datesIndex.slice(-7).reverse();
+  if(!recent.length){
+    $('an-history-empty').style.display = 'block';
+    body.innerHTML = '';
+    return;
+  }
+  $('an-history-empty').style.display = 'none';
+  const rows = [];
+  for(const d of recent){
+    const raw = await storageGetSafe('log:'+d, false);
+    if(!raw) continue;
+    const log = JSON.parse(raw);
+    const s = sumLog(log);
+    rows.push('<tr><td class="name">'+d+'</td><td class="num">'+Math.round(s.intake).toLocaleString()+'</td><td class="num">'+Math.round(s.burn).toLocaleString()+'</td><td class="num">'+Math.round(s.protein*10)/10+'</td></tr>');
+  }
+  body.innerHTML = rows.join('');
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>
